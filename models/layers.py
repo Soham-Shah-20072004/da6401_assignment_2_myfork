@@ -10,11 +10,26 @@ class CustomDropout(nn.Module):
     """
 
     def __init__(self, p: float = 0.5):
+        """
+        Initialize the CustomDropout layer.
+
+        Args:
+            p: Dropout probability.
+        """
         # inherit the machinery of the parent class
         super().__init__()
         self.p = p
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the CustomDropout layer.
+
+        Args:
+            x: Input tensor for shape [B, C, H, W].
+
+        Returns:
+            Output tensor.
+        """
         # TODO: implement dropout.
 
         # this needs to be done only in training mode

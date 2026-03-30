@@ -10,13 +10,12 @@ class VGG11Classifier(nn.Module):
     """Full classifier = VGG11Encoder + ClassificationHead."""
 
     def __init__(self, num_classes: int = 37, in_channels: int = 3, dropout_p: float = 0.5):
-
-        # Initialize the encoder first
-        
         pass
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for classification model.
+        Args:
+            x: Input tensor of shape [B, in_channels, H, W].
         Returns:
             Classification logits [B, num_classes].
         """

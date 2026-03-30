@@ -60,6 +60,8 @@ class VGG11Encoder(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 2, stride = 2)
         )
+        """Initialize the VGG11Encoder model."""
+        pass
 
     def forward(
         self, x: torch.Tensor, return_features: bool = False
