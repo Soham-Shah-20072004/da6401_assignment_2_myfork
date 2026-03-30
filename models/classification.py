@@ -3,12 +3,16 @@
 
 import torch
 import torch.nn as nn
-
+import VGG11Encoder  
+import CustomDropout
 
 class VGG11Classifier(nn.Module):
     """Full classifier = VGG11Encoder + ClassificationHead."""
 
     def __init__(self, num_classes: int = 37, in_channels: int = 3, dropout_p: float = 0.5):
+
+        # Initialize the encoder first
+        
         pass
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

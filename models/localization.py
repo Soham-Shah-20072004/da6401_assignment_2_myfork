@@ -8,6 +8,7 @@ class VGG11Localizer(nn.Module):
     """VGG11-based localizer."""
 
     def __init__(self, in_channels: int = 3):
+
         pass
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
