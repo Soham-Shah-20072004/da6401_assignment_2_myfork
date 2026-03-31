@@ -16,7 +16,7 @@ class VGG11Encoder(nn.Module):
         super().__init__()
 
         self.block1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),   # conv layer
+            nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),   # conv layer
             nn.BatchNorm2d(64),                           # normalize
             nn.ReLU(),                                    # activate
             nn.MaxPool2d(kernel_size=2, stride=2)         # halve spatial size

@@ -3,8 +3,8 @@
 
 import torch
 import torch.nn as nn
-import VGG11Encoder  
-import CustomDropout
+from .vgg11 import VGG11Encoder  
+from .layers import CustomDropout
 
 class VGG11Classifier(nn.Module):
     """Full classifier = VGG11Encoder + ClassificationHead."""
@@ -17,7 +17,26 @@ class VGG11Classifier(nn.Module):
             in_channels: Number of input channels.
             dropout_p: Dropout probability for the classifier head.
         """
-        pass
+        # inherit the machinery of the parent class
+        super().__init__()
+
+        # encoder object
+        self.vgg11_encoder = VGG11Encoder(in_channels)
+
+        # encoder is set, now we can add different heads depending on the task. 
+        # For classification task, we add a classifier head.(it is a sequential object)
+        self.classifier_head = nn.Sequential(
+            # in case of different size, lets do adaptive pooling to 7 * 7
+            nn.AdaptiveAvgPool2d((7, 7)),
+            nn.Flatten(), # for a batch size B, this will create a matrix [B, 7*7*512]
+            nn.Linear(512*7*7, 4096),
+            nn.ReLU(),
+            CustomDropout(dropout_p),
+            nn.Linear(4096, 4096),
+            nn.ReLU(),
+            CustomDropout(dropout_p),
+            nn.Linear(4096, num_classes) 
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for classification model.
@@ -27,4 +46,12 @@ class VGG11Classifier(nn.Module):
             Classification logits [B, num_classes].
         """
         # TODO: Implement forward pass.
-        raise NotImplementedError("Implement VGG11Classifier.forward")
+
+        # Python automatically calls self.encoder.forward(x) under the hood. 
+        # That's what nn.Module.__call__ does — it routes model(x) to model.forward(x).
+
+        x = self.vgg11_encoder(x)
+        x = self.classifier_head(x) # this returns the logits only. the softmax is not applied here.
+        return x
+
+

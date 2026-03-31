@@ -17,6 +17,7 @@ class IoULoss(nn.Module):
         """
         super().__init__()
         self.eps = eps
+        assert reduction in {"none", "mean", "sum"},f"reduction must be 'none', 'mean', or 'sum', got '{reduction}'"
         self.reduction = reduction
         # TODO: validate reduction in {"none", "mean", "sum"}.
 
@@ -26,4 +27,43 @@ class IoULoss(nn.Module):
             pred_boxes: [B, 4] predicted boxes in (x_center, y_center, width, height) format.
             target_boxes: [B, 4] target boxes in (x_center, y_center, width, height) format."""
         # TODO: implement IoU loss.
-        raise NotImplementedError("Implement IoULoss.forward")
+        # convert [x_center, y_center, w, h] → [x1, y1, x2, y2]
+        pred_x1 = pred_boxes[:, 0] - pred_boxes[:, 2] / 2
+        pred_y1 = pred_boxes[:, 1] - pred_boxes[:, 3] / 2
+        pred_x2 = pred_boxes[:, 0] + pred_boxes[:, 2] / 2
+        pred_y2 = pred_boxes[:, 1] + pred_boxes[:, 3] / 2
+
+        tgt_x1 = target_boxes[:, 0] - target_boxes[:, 2] / 2
+        tgt_y1 = target_boxes[:, 1] - target_boxes[:, 3] / 2
+        tgt_x2 = target_boxes[:, 0] + target_boxes[:, 2] / 2
+        tgt_y2 = target_boxes[:, 1] + target_boxes[:, 3] / 2
+
+        # intersection corners
+        inter_x1 = torch.max(pred_x1, tgt_x1)
+        inter_y1 = torch.max(pred_y1, tgt_y1)
+        inter_x2 = torch.min(pred_x2, tgt_x2)
+        inter_y2 = torch.min(pred_y2, tgt_y2)
+
+        # intersection area (clamp to 0 — boxes may not overlap at all)
+        inter_w = (inter_x2 - inter_x1).clamp(min=0)
+        inter_h = (inter_y2 - inter_y1).clamp(min=0)
+        inter_area = inter_w * inter_h
+
+        # individual box areas
+        pred_area = (pred_x2 - pred_x1) * (pred_y2 - pred_y1)
+        tgt_area  = (tgt_x2  - tgt_x1)  * (tgt_y2  - tgt_y1)
+
+        # union area
+        union_area = pred_area + tgt_area - inter_area + self.eps
+
+        # IoU and loss
+        iou = inter_area / union_area                  # [B], range [0, 1]
+        loss = 1 - iou                                 # [B], range [0, 1]
+
+        # reduction
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        return loss                                    # "none" --> return loss
+
