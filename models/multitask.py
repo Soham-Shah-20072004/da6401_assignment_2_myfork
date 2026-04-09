@@ -1,43 +1,33 @@
 """Unified multi-task model
 """
 
+import os
 import torch
 import torch.nn as nn
+from models.vgg11 import VGG11Encoder
 from models.classification import VGG11Classifier
 from models.localization import VGG11Localizer
 from models.segmentation import VGG11UNet
 
+
 class MultiTaskPerceptionModel(nn.Module):
     """Shared-backbone multi-task model."""
 
-    def __init__(self, num_breeds: int = 37, seg_classes: int = 3, in_channels: int = 3, classifier_path: str = "classifier.pth", localizer_path: str = "localizer.pth", unet_path: str = "unet.pth"):
-        """
-        Initialize the shared backbone/heads using these trained weights.
-        Args:
-            num_breeds: Number of output classes for classification head.
-            seg_classes: Number of output classes for segmentation head.
-            in_channels: Number of input channels.
-            classifier_path: Path to trained classifier weights.
-            localizer_path: Path to trained localizer weights.
-            unet_path: Path to trained unet weights.
-        """
-
+    def __init__(self, num_breeds: int = 37, seg_classes: int = 3, in_channels: int = 3,
+                 dropout_p: float = 0.5,
+                 classifier_path: str = "checkpoints/classifier.pth",
+                 localizer_path: str = "checkpoints/localizer.pth",
+                 unet_path: str = "checkpoints/unet.pth"):
         super().__init__()
 
-        # shared backbone encoder. (this is jus inititalization, when we really load the weights we need to know what is the goal, i.e for classifier, different weights will be loaded and for localizer, different weights will be loaded)
-        self.encoder = VGG11Encoder(in_channels) # this is Multi-task model's encoder.
+        self.encoder = VGG11Encoder(in_channels)
 
-        # classification head
-        # for now we will load the head from the classifier
+        clf_model = VGG11Classifier(num_breeds, in_channels, dropout_p)
+        loc_model = VGG11Localizer(in_channels, dropout_p)
+        seg_model = VGG11UNet(seg_classes, in_channels, dropout_p)
 
-        self.classifier = VGG11Classifier(num_breeds, in_channels, dropout_p).classifier_head
-
-        # localization head
-        self.localizer = VGG11Localizer(num_breeds, in_channels, dropout_p).regression_head
-
-        # segmentation/ decoder head
-        # there is not seperate decoder object in segmentation model. so we will have to initialize all decoder objects one by one. 
-        self.segmentation = VGG11UNet(seg_classes, in_channels, dropout_p)
+        self.classifier = clf_model.classifier_head
+        self.localizer = loc_model.regression_head
 
         self.up1 = seg_model.up1
         self.conv1 = seg_model.conv1
@@ -51,81 +41,47 @@ class MultiTaskPerceptionModel(nn.Module):
         self.conv5 = seg_model.conv5
         self.final_conv = seg_model.final_conv
 
-        # use this object's own method of loading weights
-        # with this in place, when multitask model is initialized, it automatically, initializes with best weights of all three tasks.
         self._load_weights(classifier_path, localizer_path, unet_path)
 
-        pass
-    
-    def _load_weights(self, classifier_path: str, localizer_path: str, unet_path: str):
-        """Load weights for all three tasks.
-        Args:
-            classifier_path: Path to trained classifier weights.
-            localizer_path: Path to trained localizer weights.
-            unet_path: Path to trained unet weights.
-        """
-        clf = VGG11Classifier()
-        ckpt = torch.load(classifier_path, map_location="cpu")
-        # ckpt is a dictionary with keys:'state_dict', ...
-        state = ckpt['state_dict']
-        # we only want to load the weights of the classifier head
-        # so we need to extract the weights of the classifier head from the state dict
-        # the keys of the state dict are of the form 'classifier_head.layer_name'
-        # so we need to extract the weights of the classifier head from the state dict
-        # and load them into the classifier head of the multitask model
-        clf.load_state_dict(state)
-        self.encoder.load_state_dict(clf.vgg11_encoder.state_dict())
-        self.classifier.load_state_dict(clf.classifier_head.state_dict())
+    def _load_weights(self, classifier_path, localizer_path, unet_path):
+        if os.path.exists(classifier_path):
+            clf = VGG11Classifier()
+            ckpt = torch.load(classifier_path, map_location="cpu")
+            state = ckpt.get("state_dict", ckpt)
+            clf.load_state_dict(state)
+            self.encoder.load_state_dict(clf.vgg11_encoder.state_dict())
+            self.classifier.load_state_dict(clf.classifier_head.state_dict())
 
-        # loading the localization weights 
-        loc = VGG11Localizer()
-        ckpt = torch.load(localizer_path, map_location="cpu")
-        state = ckpt['state_dict']
-        loc.load_state_dict(state)
-        self.localizer.load_state_dict(loc.regression_head.state_dict())
+        if os.path.exists(localizer_path):
+            loc = VGG11Localizer()
+            ckpt = torch.load(localizer_path, map_location="cpu")
+            state = ckpt.get("state_dict", ckpt)
+            loc.load_state_dict(state)
+            self.localizer.load_state_dict(loc.regression_head.state_dict())
 
-
-        # loading the segmentation decoeder weights
-        seg = VGG11UNet()
-        ckpt = torch.load(unet_path,map_location="cpu")
-        state = ckpt['state_dict']
-        seg.load_state_dict(state)
-        self.up1.load_state_dict(seg.up1.state_dict())
-        self.conv1.load_state_dict(seg.conv1.state_dict())
-        self.up2.load_state_dict(seg.up2.state_dict())
-        self.conv2.load_state_dict(seg.conv2.state_dict())
-        self.up3.load_state_dict(seg.up3.state_dict())
-        self.conv3.load_state_dict(seg.conv3.state_dict())
-        self.up4.load_state_dict(seg.up4.state_dict())
-        self.conv4.load_state_dict(seg.conv4.state_dict())
-        self.up5.load_state_dict(seg.up5.state_dict())
-        self.conv5.load_state_dict(seg.conv5.state_dict())
-        self.final_conv.load_state_dict(seg.final_conv.state_dict())
-
-
+        if os.path.exists(unet_path):
+            seg = VGG11UNet()
+            ckpt = torch.load(unet_path, map_location="cpu")
+            state = ckpt.get("state_dict", ckpt)
+            seg.load_state_dict(state)
+            self.up1.load_state_dict(seg.up1.state_dict())
+            self.conv1.load_state_dict(seg.conv1.state_dict())
+            self.up2.load_state_dict(seg.up2.state_dict())
+            self.conv2.load_state_dict(seg.conv2.state_dict())
+            self.up3.load_state_dict(seg.up3.state_dict())
+            self.conv3.load_state_dict(seg.conv3.state_dict())
+            self.up4.load_state_dict(seg.up4.state_dict())
+            self.conv4.load_state_dict(seg.conv4.state_dict())
+            self.up5.load_state_dict(seg.up5.state_dict())
+            self.conv5.load_state_dict(seg.conv5.state_dict())
+            self.final_conv.load_state_dict(seg.final_conv.state_dict())
 
     def forward(self, x: torch.Tensor):
-        """Forward pass for multi-task model.
-        Args:
-            x: Input tensor of shape [B, in_channels, H, W].
-        Returns:
-            A dict with keys:
-            - 'classification': [B, num_breeds] logits tensor.
-            - 'localization': [B, 4] bounding box tensor.
-            - 'segmentation': [B, seg_classes, H, W] segmentation logits tensor
-        """
-        # TODO: Implement forward pass.
-
-        # run encoder ONCE — shared across all tasks
         bottleneck, features = self.encoder(x, return_features=True)
 
-        # --- Task 1: classification ---
-        cls_out = self.classifier_head(bottleneck)          # [B, 37]
+        cls_out = self.classifier(bottleneck)
+        loc_out = self.localizer(bottleneck)
 
-        # --- Task 2: Localization ---
-        loc_out = self.regression_head(bottleneck)          # [B, 4]
-
-        # --- Task 3: Segmentation ---
         s = self.up1(bottleneck)
         s = torch.cat([s, features['block4']], dim=1)
         s = self.conv1(s)
@@ -140,11 +96,10 @@ class MultiTaskPerceptionModel(nn.Module):
         s = self.conv4(s)
         s = self.up5(s)
         s = self.conv5(s)
-        seg_out = self.final_conv(s)                        # [B, 3, 224, 224]
+        seg_out = self.final_conv(s)
 
         return {
             "classification": cls_out,
             "localization": loc_out,
-            "segmentation": seg_out
+            "segmentation": seg_out,
         }
-

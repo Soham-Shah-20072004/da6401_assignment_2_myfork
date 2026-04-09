@@ -216,7 +216,7 @@ def train_localizer(config):
         ckpt = torch.load(clf_path, map_location="cpu")
         state = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
         clf.load_state_dict(state)
-        model.encoder.load_state_dict(clf.encoder.state_dict())
+        model.vgg11_encoder.load_state_dict(clf.vgg11_encoder.state_dict())
         print("  ✓ Encoder weights loaded")
 
     best_iou = 0.0
@@ -328,7 +328,7 @@ def train_unet(config):
         ckpt = torch.load(clf_path, map_location="cpu")
         state = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
         clf.load_state_dict(state)
-        model.encoder.load_state_dict(clf.encoder.state_dict())
+        model.vgg11_encoder.load_state_dict(clf.vgg11_encoder.state_dict())
         print("  ✓ Encoder weights loaded")
 
     best_dice = 0.0
