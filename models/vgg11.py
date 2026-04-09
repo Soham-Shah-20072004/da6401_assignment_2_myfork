@@ -108,3 +108,5 @@ class VGG11Encoder(nn.Module):
 
             return bottleneck
 
+# add alias
+VGG11 = VGG11Encoder

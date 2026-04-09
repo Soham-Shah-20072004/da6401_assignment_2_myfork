@@ -22,7 +22,7 @@ class VGG11Localizer(nn.Module):
 
         # encoder is set, now we can add different heads depending on the task. 
         # For localization task, we add a localization head.(it is a sequential object)
-        self.localization_head = nn.Sequential(
+        self.regression_head = nn.Sequential(
             # in case of different size, lets do adaptive pooling to 7 * 7
             nn.AdaptiveAvgPool2d((7, 7)),
             nn.Flatten(), # for a batch size B, this will create a matrix [B, 7*7*512]
@@ -45,6 +45,6 @@ class VGG11Localizer(nn.Module):
         """
         # TODO: Implement forward pass.
         x = self.vgg11_encoder(x)
-        x = self.localization_head(x) # pixel value locations, no normalization or activation required
+        x = self.regression_head(x) # pixel value locations, no normalization or activation required
         
         return x
