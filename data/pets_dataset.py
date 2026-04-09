@@ -31,15 +31,35 @@ class OxfordIIITPetDataset(Dataset):
     
         self.transform = transform
 
+        # ---------------------------------------------
         # split id
+        # if split == "train":
+        #     split_id = 1
+        # else:
+        #     split_id = 2
+
+        # list_path = os.path.join(root_dir, "annotations", "list.txt")
+        # self.samples = []  # each entry: (image_name, class_idx)
+        # with open(list_path, "r") as f:
+        #     for line in f:
+        #         line = line.strip()
+        #         if not line or line.startswith("#"):
+        #             continue
+        #         parts = line.split()
+        #         name      = parts[0]          # e.g. "Abyssinian_1"
+        #         class_id  = int(parts[1]) - 1 # 1-indexed → 0-indexed
+        #         img_split = int(parts[3])     # 1=train, 2=test
+
+        #         if img_split != split_id:
+        #             continue # skip those images which dont match with the current mode, for split_id = 1, we skip those images whose img_split is 2
+        
+        # ----------------------------------------
+
         if split == "train":
-            split_id = 1
+            list_path = os.path.join(root_dir, "annotations", "trainval.txt")
         else:
-            split_id = 2
-
-        list_path = os.path.join(root_dir, "annotations", "list.txt")
-        self.samples = []  # each entry: (image_name, class_idx)
-
+            list_path = os.path.join(root_dir, "annotations", "test.txt")
+        self.samples = []
 
         with open(list_path, "r") as f:
             for line in f:
@@ -47,13 +67,8 @@ class OxfordIIITPetDataset(Dataset):
                 if not line or line.startswith("#"):
                     continue
                 parts = line.split()
-                name      = parts[0]          # e.g. "Abyssinian_1"
-                class_id  = int(parts[1]) - 1 # 1-indexed → 0-indexed
-                img_split = int(parts[3])     # 1=train, 2=test
-
-                if img_split != split_id:
-                    continue # skip those images which dont match with the current mode, for split_id = 1, we skip those images whose img_split is 2
-                
+                name      = parts[0]
+                class_id  = int(parts[1]) - 1        
                 xml_path = os.path.join(self.xml_dir, name + ".xml") # path to xml_dir + imagename.xml is the path to the xml file
                 if not os.path.exists(xml_path): # check if the xml file exists
                     continue # skip those images for which bounding box is not available
