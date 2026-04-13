@@ -263,10 +263,22 @@ def log_bbox_visualizations(config, num_samples=10):
 
     wandb_images = []
 
-    for i in range(num_samples):
+    samples_collected = 0
+    for i in range(len(test_dataset)):
+        if samples_collected >= num_samples:
+            break
+            
+        # Check if the image has a real XML bounding box
+        name, _ = test_dataset.samples[i]
+        xml_path = os.path.join(test_dataset.xml_dir, name + ".xml")
+        if not os.path.exists(xml_path):
+            continue  # Skip fake bounding boxes!
+
         sample = test_dataset[i]
         image  = sample["image"]                  # [3, 224, 224]
         target = sample["bbox"]                   # [4]
+        
+        samples_collected += 1
 
         # run prediction
         with torch.no_grad():
