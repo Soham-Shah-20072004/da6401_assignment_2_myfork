@@ -19,7 +19,7 @@ CONFIG = {
     "batch_size":   32,
     "num_workers":  2,
     "lr":           1e-4,
-    "epochs":       50,
+    "epochs":       40,
     "val_split":    0.2,       # 20% of trainval for validation
     "dropout_p":    0.5,
     "device":       "cuda" if torch.cuda.is_available() else "cpu",
@@ -110,14 +110,14 @@ def train_classifier(config):
     print("TASK 1: Training VGG11 Classifier")
     print("="*50)
 
-    wandb.init(project="da6401-assignment2", name="classifier", config=config)
+    wandb.init(project="da6401-assignment2", name="classifier-final", config=config)
 
     device = torch.device(config["device"])
     train_loader, val_loader = get_dataloaders(config)
 
     model     = VGG11Classifier(num_classes=37, dropout_p=config["dropout_p"]).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
+    optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"], weight_decay=1e-4)
 
     best_acc = 0.0
 
@@ -194,7 +194,7 @@ def train_localizer(config):
     print("TASK 2: Training VGG11 Localizer")
     print("="*50)
 
-    wandb.init(project="da6401-assignment2", name="localizer", config=config)
+    wandb.init(project="da6401-assignment2", name="localizer-final", config=config)
 
     device = torch.device(config["device"])
     train_loader, val_loader = get_dataloaders(config)
@@ -202,7 +202,6 @@ def train_localizer(config):
     model     = VGG11Localizer(dropout_p=config["dropout_p"]).to(device)
     mse_loss  = nn.MSELoss()
     iou_loss  = IoULoss(reduction="mean")
-    optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
 
     # optionally load pretrained encoder from classifier
     clf_path = os.path.join(config["checkpoint_dir"], "classifier.pth")
@@ -215,6 +214,12 @@ def train_localizer(config):
         clf.load_state_dict(state)
         model.vgg11_encoder.load_state_dict(clf.vgg11_encoder.state_dict())
         print("  ✓ Encoder weights loaded")
+
+    # Freeze encoder to prevent task interference in multi-task model
+    for param in model.vgg11_encoder.parameters():
+        param.requires_grad = False
+
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config["lr"])
 
     best_iou = 0.0
 
@@ -305,14 +310,13 @@ def train_unet(config):
     print("TASK 3: Training VGG11 UNet")
     print("="*50)
 
-    wandb.init(project="da6401-assignment2", name="unet", config=config)
+    wandb.init(project="da6401-assignment2", name="unet-final", config=config)
 
     device = torch.device(config["device"])
     train_loader, val_loader = get_dataloaders(config)
 
     model     = VGG11UNet(num_classes=3, dropout_p=config["dropout_p"]).to(device)
     criterion = nn.CrossEntropyLoss()      # pixel-wise classification loss
-    optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
 
     # load pretrained encoder from classifier
     clf_path = os.path.join(config["checkpoint_dir"], "classifier.pth")
@@ -325,6 +329,12 @@ def train_unet(config):
         clf.load_state_dict(state)
         model.vgg11_encoder.load_state_dict(clf.vgg11_encoder.state_dict())
         print("  ✓ Encoder weights loaded")
+
+    # Freeze encoder to prevent task interference in multi-task model
+    for param in model.vgg11_encoder.parameters():
+        param.requires_grad = False
+
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=config["lr"])
 
     best_dice = 0.0
 
