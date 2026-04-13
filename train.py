@@ -17,7 +17,7 @@ from albumentations.pytorch import ToTensorV2
 CONFIG = {
     "data_root":    "oxford-iiit-pet",
     "batch_size":   32,
-    "num_workers":  4,
+    "num_workers":  2,
     "lr":           1e-4,
     "epochs":       50,
     "val_split":    0.2,       # 20% of trainval for validation
