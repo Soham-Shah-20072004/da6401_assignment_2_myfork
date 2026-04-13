@@ -20,6 +20,16 @@ class MultiTaskPerceptionModel(nn.Module):
                  unet_path: str = "checkpoints/unet.pth"):
         super().__init__()
 
+        # Download checkpoints from Google Drive (required by autograder)
+        import gdown
+        os.makedirs(os.path.dirname(classifier_path) if os.path.dirname(classifier_path) else "checkpoints", exist_ok=True)
+        if not os.path.exists(classifier_path):
+            gdown.download(id="1eAmFgvcAhNkPVzRnapGNi61YeutJdnb3", output=classifier_path, quiet=False)
+        if not os.path.exists(localizer_path):
+            gdown.download(id="1w_Avh31xFoG72q4IJ8mEffem9nvHoo96", output=localizer_path, quiet=False)
+        if not os.path.exists(unet_path):
+            gdown.download(id="158m-pLDwkIt42HZfMcv1zl7eL3BkIY_t", output=unet_path, quiet=False)
+
         self.encoder = VGG11Encoder(in_channels)
 
         clf_model = VGG11Classifier(num_breeds, in_channels, dropout_p)
@@ -44,14 +54,15 @@ class MultiTaskPerceptionModel(nn.Module):
         self._load_weights(classifier_path, localizer_path, unet_path)
 
     def _load_weights(self, classifier_path, localizer_path, unet_path):
+        # Step 1: Load classifier — HEAD only (not encoder)
         if os.path.exists(classifier_path):
             clf = VGG11Classifier()
             ckpt = torch.load(classifier_path, map_location="cpu")
             state = ckpt.get("state_dict", ckpt)
             clf.load_state_dict(state)
-            self.encoder.load_state_dict(clf.vgg11_encoder.state_dict())
             self.classifier.load_state_dict(clf.classifier_head.state_dict())
 
+        # Step 2: Load localizer — HEAD only (not encoder)
         if os.path.exists(localizer_path):
             loc = VGG11Localizer()
             ckpt = torch.load(localizer_path, map_location="cpu")
@@ -59,11 +70,13 @@ class MultiTaskPerceptionModel(nn.Module):
             loc.load_state_dict(state)
             self.localizer.load_state_dict(loc.regression_head.state_dict())
 
+        # Step 3: Load UNet — decoder AND encoder (encoder loaded LAST so it wins)
         if os.path.exists(unet_path):
             seg = VGG11UNet()
             ckpt = torch.load(unet_path, map_location="cpu")
             state = ckpt.get("state_dict", ckpt)
             seg.load_state_dict(state)
+            self.encoder.load_state_dict(seg.vgg11_encoder.state_dict())
             self.up1.load_state_dict(seg.up1.state_dict())
             self.conv1.load_state_dict(seg.conv1.state_dict())
             self.up2.load_state_dict(seg.up2.state_dict())
@@ -81,6 +94,7 @@ class MultiTaskPerceptionModel(nn.Module):
 
         cls_out = self.classifier(bottleneck)
         loc_out = self.localizer(bottleneck)
+        loc_out = loc_out * 224  # scale from [0,1] to pixel space
 
         s = self.up1(bottleneck)
         s = torch.cat([s, features['block4']], dim=1)

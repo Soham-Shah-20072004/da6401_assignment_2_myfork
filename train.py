@@ -19,7 +19,7 @@ CONFIG = {
     "batch_size":   32,
     "num_workers":  4,
     "lr":           1e-4,
-    "epochs":       30,
+    "epochs":       50,
     "val_split":    0.2,       # 20% of trainval for validation
     "dropout_p":    0.5,
     "device":       "cuda" if torch.cuda.is_available() else "cpu",
@@ -118,7 +118,6 @@ def train_classifier(config):
     model     = VGG11Classifier(num_classes=37, dropout_p=config["dropout_p"]).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     best_acc = 0.0
 
@@ -163,7 +162,6 @@ def train_classifier(config):
 
         val_acc  = val_correct / val_total
         val_loss = val_loss / len(val_loader)
-        scheduler.step()
 
         print(f"Epoch {epoch+1}/{config['epochs']} | "
               f"Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | "
@@ -175,7 +173,7 @@ def train_classifier(config):
             "classifier/train_acc":  train_acc,
             "classifier/val_loss":   val_loss,
             "classifier/val_acc":    val_acc,
-            "classifier/lr":         scheduler.get_last_lr()[0],
+            "classifier/lr":         config["lr"],
             "epoch":                 epoch + 1
         })
 
@@ -205,7 +203,6 @@ def train_localizer(config):
     mse_loss  = nn.MSELoss()
     iou_loss  = IoULoss(reduction="mean")
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # optionally load pretrained encoder from classifier
     clf_path = os.path.join(config["checkpoint_dir"], "classifier.pth")
@@ -266,7 +263,6 @@ def train_localizer(config):
 
         val_loss = val_loss / len(val_loader)
         val_iou  = val_iou  / len(val_loader)
-        scheduler.step()
 
         print(f"Epoch {epoch+1}/{config['epochs']} | "
               f"Train Loss: {train_loss:.4f} IoU: {train_iou:.4f} | "
@@ -277,7 +273,7 @@ def train_localizer(config):
             "localizer/train_iou":  train_iou,
             "localizer/val_loss":   val_loss,
             "localizer/val_iou":    val_iou,
-            "localizer/lr":         scheduler.get_last_lr()[0],
+            "localizer/lr":         config["lr"],
             "epoch":                epoch + 1
         })
 
@@ -317,7 +313,6 @@ def train_unet(config):
     model     = VGG11UNet(num_classes=3, dropout_p=config["dropout_p"]).to(device)
     criterion = nn.CrossEntropyLoss()      # pixel-wise classification loss
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # load pretrained encoder from classifier
     clf_path = os.path.join(config["checkpoint_dir"], "classifier.pth")
@@ -370,7 +365,6 @@ def train_unet(config):
 
         val_loss = val_loss / len(val_loader)
         val_dice = val_dice / len(val_loader)
-        scheduler.step()
 
         print(f"Epoch {epoch+1}/{config['epochs']} | "
               f"Train Loss: {train_loss:.4f} Dice: {train_dice:.4f} | "
@@ -381,7 +375,7 @@ def train_unet(config):
             "unet/train_dice": train_dice,
             "unet/val_loss":   val_loss,
             "unet/val_dice":   val_dice,
-            "unet/lr":         scheduler.get_last_lr()[0],
+            "unet/lr":         config["lr"],
             "epoch":           epoch + 1
         })
 

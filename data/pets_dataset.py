@@ -70,8 +70,9 @@ class OxfordIIITPetDataset(Dataset):
                 name      = parts[0]
                 class_id  = int(parts[1]) - 1        
                 xml_path = os.path.join(self.xml_dir, name + ".xml") # path to xml_dir + imagename.xml is the path to the xml file
-                if not os.path.exists(xml_path): # check if the xml file exists
-                    continue # skip those images for which bounding box is not available
+                has_bbox = os.path.exists(xml_path)
+                if split == "train" and not has_bbox:
+                    continue # skip train images without bounding box
 
                 self.samples.append((name, class_id))
                 # now we have the image name, class id, and xml path
@@ -113,7 +114,10 @@ class OxfordIIITPetDataset(Dataset):
 
         # get the bounding box
         xml_path = os.path.join(self.xml_dir, name + ".xml")
-        xmin, ymin, xmax, ymax = self._parse_xml(xml_path)
+        if os.path.exists(xml_path):
+            xmin, ymin, xmax, ymax = self._parse_xml(xml_path)
+        else:
+            xmin, ymin, xmax, ymax = 0, 0, orig_w, orig_h
         
         transformed = self.transform(
             image=image,

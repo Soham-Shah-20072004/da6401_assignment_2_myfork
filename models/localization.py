@@ -34,7 +34,8 @@ class VGG11Localizer(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(),
             CustomDropout(dropout_p),
-            nn.Linear(4096, 4) # output is 4 values for the 4 coordinates of the bounding box
+            nn.Linear(4096, 4), # output is 4 values for the 4 coordinates of the bounding box
+            nn.Sigmoid() # squash to [0, 1], will scale to pixel space in forward
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -47,6 +48,6 @@ class VGG11Localizer(nn.Module):
         """
         # TODO: Implement forward pass.
         x = self.vgg11_encoder(x)
-        x = self.regression_head(x) # pixel value locations, no normalization or activation required
-        
+        x = self.regression_head(x) # outputs [0, 1] after Sigmoid
+        x = x * 224 # scale to pixel space [0, 224]
         return x
