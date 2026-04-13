@@ -24,11 +24,11 @@ class MultiTaskPerceptionModel(nn.Module):
         import gdown
         os.makedirs(os.path.dirname(classifier_path) if os.path.dirname(classifier_path) else "checkpoints", exist_ok=True)
         if not os.path.exists(classifier_path):
-            gdown.download(id="1eAmFgvcAhNkPVzRnapGNi61YeutJdnb3", output=classifier_path, quiet=False)
+            gdown.download(id="1KYjSypxyneIN0-4onf4iKw5OJYfP3vHc", output=classifier_path, quiet=False)
         if not os.path.exists(localizer_path):
-            gdown.download(id="1w_Avh31xFoG72q4IJ8mEffem9nvHoo96", output=localizer_path, quiet=False)
+            gdown.download(id="1Hx4VUJ5NwC72YhemGfutejElpeBmBrGB", output=localizer_path, quiet=False)
         if not os.path.exists(unet_path):
-            gdown.download(id="158m-pLDwkIt42HZfMcv1zl7eL3BkIY_t", output=unet_path, quiet=False)
+            gdown.download(id="1rsdq8jyxtrw1qTP6nh9LRumf10QnOcWE", output=unet_path, quiet=False)
 
         self.encoder = VGG11Encoder(in_channels)
 
